@@ -33,7 +33,7 @@ import java.util.List;
 public final class LifeStealZ extends ZetaCorePlugin {
     private static final String PACKAGE_PREFIX = "com.zetaplugins.lifestealz";
     private static final String FASTSTATS_TOKEN = "8fb586fadff0ff4cb078cb25d69ab734";
-    public static final ErrorTracker ERROR_TRACKER = ErrorTracker.contextAware();
+    public static final ErrorTracker FASTSTATS_ERROR_TRACKER = ErrorTracker.contextAware();
 
     private VersionChecker versionChecker;
     private Storage storage;
@@ -57,6 +57,7 @@ public final class LifeStealZ extends ZetaCorePlugin {
 
     private final dev.faststats.core.Metrics metrics = BukkitMetrics.factory()
             .token(FASTSTATS_TOKEN)
+            .errorTracker(FASTSTATS_ERROR_TRACKER)
             .create(this);
 
     @Override
