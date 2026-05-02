@@ -146,6 +146,7 @@
                             <include>com.zaxxer:HikariCP</include>
                             <include>com.zetaplugins:zetacore</include>
                             <include>dev.faststats.metrics:bukkit</include>
+                            <include>dev.faststats.metrics:core</include>
                         </includes>
                     </artifactSet>
                     <transformers>
@@ -262,6 +263,11 @@
             <artifactId>lombok</artifactId>
             <version>1.18.34</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>dev.faststats.metrics</groupId>
+            <artifactId>core</artifactId>
+            <version>0.22.0</version>
         </dependency>
         <dependency>
             <groupId>dev.faststats.metrics</groupId>
