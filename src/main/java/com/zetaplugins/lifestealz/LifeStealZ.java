@@ -1,5 +1,6 @@
 package com.zetaplugins.lifestealz;
 
+import com.zetaplugins.lifestealz.storage.*;
 import com.zetaplugins.lifestealz.util.*;
 import com.zetaplugins.lifestealz.util.revive.ReviveTaskManager;
 import com.zetaplugins.zetacore.ZetaCorePlugin;
@@ -21,10 +22,6 @@ import com.zetaplugins.lifestealz.util.customblocks.ReviveBeaconEffectManager;
 import com.zetaplugins.lifestealz.util.customitems.recipe.RecipeManager;
 import com.zetaplugins.lifestealz.util.geysermc.GeyserManager;
 import com.zetaplugins.lifestealz.util.geysermc.GeyserPlayerFile;
-import com.zetaplugins.lifestealz.storage.MariaDBStorage;
-import com.zetaplugins.lifestealz.storage.MySQLStorage;
-import com.zetaplugins.lifestealz.storage.Storage;
-import com.zetaplugins.lifestealz.storage.SQLiteStorage;
 import com.zetaplugins.lifestealz.util.worldguard.WorldGuardManager;
 
 import java.io.File;
@@ -99,7 +96,7 @@ public final class LifeStealZ extends ZetaCorePlugin {
         languageManager = new LanguageManager(this);
         configManager = new ConfigManager(this);
 
-        storage = createPlayerDataStorage();
+        storage = createStorage();
         storage.init();
 
         recipeManager = new RecipeManager(this);
@@ -226,7 +223,7 @@ public final class LifeStealZ extends ZetaCorePlugin {
         return configManager;
     }
 
-    private Storage createPlayerDataStorage() {
+    private Storage createBackingStorage() {
         switch (getConfigManager().getStorageConfig().getString("type").toLowerCase()) {
             case "mysql":
                 getLogger().info("Using MySQL storage");
@@ -241,6 +238,12 @@ public final class LifeStealZ extends ZetaCorePlugin {
                 getLogger().warning("Invalid storage type in config.yml! Using SQLite storage as fallback.");
                 return new SQLiteStorage(this);
         }
+    }
+
+    private Storage createStorage() {
+        boolean useCache = getConfigManager().getStorageConfig().getBoolean("enableCache", true);
+        Storage storage = createBackingStorage();
+        return useCache ? new CachedStorage(this, storage) : storage;
     }
 
     public static void setMaxHealth(Player player, double maxHealth) {
