@@ -112,7 +112,7 @@ public final class HeartsSubCommand implements SubCommand {
 
                     targetPlayerData.setMaxHealth(targetPlayerData.getMaxHealth() + (amount * 2));
                     storage.save(targetPlayerData);
-                    if (targetPlayer instanceof Player) LifeStealZ.setMaxHealth((Player) targetPlayer, targetPlayerData.getMaxHealth());
+                    applyHealthUpdate(targetPlayer, targetPlayerData.getMaxHealth());
                     break;
                 }
                 case "set": {
@@ -132,7 +132,7 @@ public final class HeartsSubCommand implements SubCommand {
 
                     targetPlayerData.setMaxHealth(amount * 2);
                     storage.save(targetPlayerData);
-                    if (targetPlayer instanceof Player) LifeStealZ.setMaxHealth((Player) targetPlayer, targetPlayerData.getMaxHealth());
+                    applyHealthUpdate(targetPlayer, targetPlayerData.getMaxHealth());
                     break;
                 }
                 case "remove": {
@@ -147,7 +147,7 @@ public final class HeartsSubCommand implements SubCommand {
 
                     targetPlayerData.setMaxHealth(targetPlayerData.getMaxHealth() - (amount * 2));
                     storage.save(targetPlayerData);
-                    if (targetPlayer instanceof Player) LifeStealZ.setMaxHealth((Player) targetPlayer, targetPlayerData.getMaxHealth());
+                    applyHealthUpdate(targetPlayer, targetPlayerData.getMaxHealth());
                     break;
                 }
             }
@@ -155,6 +155,18 @@ public final class HeartsSubCommand implements SubCommand {
 
         sendConfirmMessage(sender, optionTwo, targetPlayers, amount);
         return true;
+    }
+
+    // [Folia Support] Helper method to apply max health attribute on the correct thread
+    private void applyHealthUpdate(OfflinePlayer targetPlayer, double maxHealth) {
+        if (targetPlayer instanceof Player) {
+            Player onlineTarget = (Player) targetPlayer;
+            if (LifeStealZ.isFolia()) {
+                onlineTarget.getScheduler().run(plugin, task -> LifeStealZ.setMaxHealth(onlineTarget, maxHealth), null);
+            } else {
+                LifeStealZ.setMaxHealth(onlineTarget, maxHealth);
+            }
+        }
     }
 
     private void sendConfirmMessage(CommandSender sender, String optionTwo, List<OfflinePlayer> targetPlayers, int changedAmount) {

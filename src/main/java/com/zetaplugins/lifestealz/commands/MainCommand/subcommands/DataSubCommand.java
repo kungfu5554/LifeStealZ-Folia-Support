@@ -50,6 +50,9 @@ public final class DataSubCommand implements SubCommand {
                 "exportingData",
                 "&7Exporting player data..."
         ));
+        
+        // [Folia Support] Note: Bukkit.getScheduler().runTaskAsynchronously() is fully supported 
+        // in Folia for background I/O tasks. No scheduler modification is needed here.
         BukkitTask task = plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             String filePath = storage.export(fileName);
             if (filePath != null) {
@@ -77,6 +80,8 @@ public final class DataSubCommand implements SubCommand {
                 "importingData",
                 "&7Importing player data..."
         ));
+        
+        // [Folia Support] Same as above, asynchronous execution is safe in Folia.
         BukkitTask task = plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             storage.importData(fileName);
             sender.sendMessage(MessageUtils.getAndFormatMsg(

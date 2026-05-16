@@ -2,8 +2,8 @@ package com.zetaplugins.lifestealz.caches;
 
 import com.zetaplugins.lifestealz.LifeStealZ;
 
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class OfflinePlayerCache extends Cache<String> {
 
@@ -20,7 +20,9 @@ public final class OfflinePlayerCache extends Cache<String> {
     @Override
     public void reloadCache() {
         clearCache();
-        Set<String> offlinePlayerNames = new HashSet<>(getPlugin().getStorage().getPlayerNames());
+        // [Folia Support] Changed from HashSet to ConcurrentHashMap.newKeySet() to ensure thread safety
+        Set<String> offlinePlayerNames = ConcurrentHashMap.newKeySet();
+        offlinePlayerNames.addAll(getPlugin().getStorage().getPlayerNames());
         addAllItems(offlinePlayerNames);
     }
 }

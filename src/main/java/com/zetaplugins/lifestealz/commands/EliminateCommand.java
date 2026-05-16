@@ -42,10 +42,18 @@ public final class EliminateCommand implements CommandExecutor, TabCompleter {
             return false;
         }
 
-        eliminatePlayer(sender, targetPlayer);
+        // [Folia Support] In Folia, you cannot execute operations on "Player B" from "Player A's" thread.
+        // We must schedule the elimination logic on the target player's specific entity scheduler to prevent crashes.
+        if (LifeStealZ.isFolia()) {
+            targetPlayer.getScheduler().run(plugin, scheduledTask -> {
+                eliminatePlayer(sender, targetPlayer);
+            }, null);
+        } else {
+            eliminatePlayer(sender, targetPlayer);
+        }
+        
         return true;
     }
-
 
     private void eliminatePlayer(CommandSender sender, Player targetPlayer) {
         PlayerData playerData = plugin.getStorage().load(targetPlayer.getUniqueId());

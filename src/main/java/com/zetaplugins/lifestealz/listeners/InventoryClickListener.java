@@ -16,8 +16,13 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
+/* Old code:
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+*/
+// Folia Update: Import ScheduledTask
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+
 import com.zetaplugins.lifestealz.LifeStealZ;
 import com.zetaplugins.lifestealz.util.commands.CommandUtils;
 import com.zetaplugins.lifestealz.util.customblocks.CustomBlock;
@@ -353,23 +358,41 @@ public final class InventoryClickListener implements Listener {
                 itemData.getReviveTime()
         );
 
-        BukkitTask reviveTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                applyReviveData(data);
-                executeReviveActions(reviver, target, location);
+        /* Old code:
+        // [Folia Support] Modifying blocks and playing sound in a specific location requires RegionScheduler
+        Object scheduledTaskObj = null;
+        long delayTicks = itemData.getReviveTime() * 20L;
+        
+        Runnable taskLogic = () -> { ... };
 
-                plugin.getReviveTaskManager().removeReviveTask(beaconLocation);
+        if (LifeStealZ.isFolia()) { ... } else { ... }
+        
+        plugin.getReviveTaskManager().addReviveTask(beaconLocation, new ReviveTask(
+                beaconLocation,
+                (BukkitTask) scheduledTaskObj, // Cast may fail on Folia
+                ...
+        ));
+        */
 
-                plugin.getReviveBeaconEffectManager().clearAllEffects(beaconLocation);
-                beaconLocation.getBlock().setType(Material.AIR);
-                beaconLocation.getWorld().playSound(beaconLocation, Sound.ENTITY_PLAYER_LEVELUP, 500.0f, 1.0f);
-            }
-        }.runTaskLater(plugin, itemData.getReviveTime() * 20L);
+        // Folia Update: Directly use ScheduledTask to match ReviveTask.java format
+        long delayTicks = itemData.getReviveTime() * 20L;
+        
+        Runnable taskLogic = () -> {
+            applyReviveData(data);
+            executeReviveActions(reviver, target, location);
+
+            plugin.getReviveTaskManager().removeReviveTask(beaconLocation);
+
+            plugin.getReviveBeaconEffectManager().clearAllEffects(beaconLocation);
+            beaconLocation.getBlock().setType(Material.AIR);
+            beaconLocation.getWorld().playSound(beaconLocation, Sound.ENTITY_PLAYER_LEVELUP, 500.0f, 1.0f);
+        };
+
+        ScheduledTask scheduledTaskObj = Bukkit.getRegionScheduler().runDelayed(plugin, beaconLocation, task -> taskLogic.run(), delayTicks);
 
         plugin.getReviveTaskManager().addReviveTask(beaconLocation, new ReviveTask(
                 beaconLocation,
-                reviveTask,
+                scheduledTaskObj,
                 reviver.getUniqueId(),
                 target.getUniqueId(),
                 System.currentTimeMillis() / 1000L,

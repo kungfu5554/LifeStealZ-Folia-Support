@@ -2,8 +2,8 @@ package com.zetaplugins.lifestealz.caches;
 
 import com.zetaplugins.lifestealz.LifeStealZ;
 
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class EliminatedPlayersCache extends Cache<String> {
     /**
@@ -19,7 +19,9 @@ public final class EliminatedPlayersCache extends Cache<String> {
     @Override
     public void reloadCache() {
         clearCache();
-        Set<String> eliminatedPlayerNames = new HashSet<>(getPlugin().getStorage().getEliminatedPlayerNames());
+        // [Folia Support] Changed from HashSet to ConcurrentHashMap.newKeySet() to ensure thread safety
+        Set<String> eliminatedPlayerNames = ConcurrentHashMap.newKeySet();
+        eliminatedPlayerNames.addAll(getPlugin().getStorage().getEliminatedPlayerNames());
         addAllItems(eliminatedPlayerNames);
     }
 

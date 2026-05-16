@@ -11,13 +11,20 @@ import com.zetaplugins.lifestealz.util.GuiManager;
 import com.zetaplugins.lifestealz.util.MessageUtils;
 import com.zetaplugins.lifestealz.util.customitems.CustomItem;
 import com.zetaplugins.lifestealz.util.customitems.CustomItemManager;
+// Folia Update: Import ScheduledTask
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 final class RecipeRenderer {
     private final LifeStealZ plugin;
+
+    /* Old code:
     private final Map<Inventory, List<Integer>> animationMap = new HashMap<>();
+    */
+    // Folia Update: Changed Integer (task ID) to ScheduledTask
+    private final Map<Inventory, List<ScheduledTask>> animationMap = new HashMap<>();
 
     public RecipeRenderer(LifeStealZ plugin) {
         this.plugin = plugin;
@@ -26,11 +33,18 @@ final class RecipeRenderer {
     /**
      * Saves that an animation was started in an inventory to stop them when the inventory is closed
      * @param inventory The inventory to save the animation for
-     * @param taskId The task id of the animation
+     * @param task The task of the animation
      */
+    /* Old code:
     private void addAnimation(Inventory inventory, int taskId) {
         if (animationMap.containsKey(inventory)) animationMap.get(inventory).add(taskId);
         else animationMap.put(inventory, new ArrayList<>(Collections.singletonList(taskId)));
+    }
+    */
+    // Folia Update: Accept ScheduledTask instead of int taskId
+    private void addAnimation(Inventory inventory, ScheduledTask task) {
+        if (animationMap.containsKey(inventory)) animationMap.get(inventory).add(task);
+        else animationMap.put(inventory, new ArrayList<>(Collections.singletonList(task)));
     }
 
     /**
@@ -38,9 +52,18 @@ final class RecipeRenderer {
      * @param inventory The inventory to cancel the animations for
      */
     public void cancelAnimations(Inventory inventory) {
+        /* Old code:
         if (animationMap.containsKey(inventory)) {
             for (int taskId : animationMap.get(inventory)) {
                 Bukkit.getScheduler().cancelTask(taskId);
+            }
+            animationMap.remove(inventory);
+        }
+        */
+        // Folia Update: Cancel tasks using the ScheduledTask object directly
+        if (animationMap.containsKey(inventory)) {
+            for (ScheduledTask task : animationMap.get(inventory)) {
+                task.cancel();
             }
             animationMap.remove(inventory);
         }
@@ -202,6 +225,7 @@ final class RecipeRenderer {
 
         if (materialList.isEmpty()) return;
 
+        /* Old code:
         Runnable runnable = () -> {
             int currentIndex = index.get();
             inventory.setItem(slot, new CustomItem(materialList.get(currentIndex)).makeForbidden().getItemStack());
@@ -221,6 +245,24 @@ final class RecipeRenderer {
             Bukkit.getScheduler().cancelTask(taskId);
             if (inventory != null) inventory.setItem(slot, new CustomItem(materialList.get(0)).makeForbidden().getItemStack());
         }, 20 * 30);
+        */
+
+        // Folia Update: Use GlobalRegionScheduler for generic Custom Inventories
+        ScheduledTask task = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, scheduledTask -> {
+            int currentIndex = index.get();
+            inventory.setItem(slot, new CustomItem(materialList.get(currentIndex)).makeForbidden().getItemStack());
+
+            // Update index, loop back when reaching the end
+            index.set((currentIndex + 1) % materialList.size());
+        }, 1L, 20L); // delay must be >= 1
+
+        addAnimation(inventory, task);
+
+        // Cancel the task after 30 seconds using runDelayed
+        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, scheduledTask -> {
+            task.cancel();
+            if (inventory != null) inventory.setItem(slot, new CustomItem(materialList.get(0)).makeForbidden().getItemStack());
+        }, 20L * 30L);
     }
 
     private Set<String> getItemIds() {

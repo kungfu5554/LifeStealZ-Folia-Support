@@ -77,7 +77,6 @@ public final class PlayerDeathListener implements Listener {
 
     private void handleHeartLoss(PlayerDeathEvent event, Player player, Player killer, PlayerData playerData, boolean isDeathByPlayer) {
         final double minHearts = plugin.getConfig().getInt("minHearts") * 2;
-
         double healthPerKill = plugin.getConfig().getInt("heartsPerKill") * 2;
         double healthPerNaturalDeath = plugin.getConfig().getInt("heartsPerNaturalDeath") * 2;
         double healthToLoose = isDeathByPlayer ? healthPerKill : healthPerNaturalDeath;
@@ -114,12 +113,10 @@ public final class PlayerDeathListener implements Listener {
             }
         }
 
-
         boolean preventKillerGain = false;
         boolean droppedAtKiller = false;
 
         if (isDeathByPlayer && !killerInGracePeriod && !killerHasBypass) {
-            
             if (handleHeartGainCooldown(event, player, killer, healthToLoose)) {
                 preventKillerGain = true;
                 if (plugin.getConfig().getBoolean("heartGainCooldown.dropOnCooldown")) {
@@ -197,12 +194,10 @@ public final class PlayerDeathListener implements Listener {
 
     private void handlePvPDeath(PlayerDeathEvent event, Player player, Player killer, PlayerData playerData, double healthToLoose, boolean preventKillerGain, boolean droppedAtKiller) {
         double healthGain = healthToLoose;
-
         ZPlayerPvPDeathEvent pvpEvent = new ZPlayerPvPDeathEvent(event, killer, healthToLoose, healthGain);
 
         boolean shouldDropFromPvP = plugin.getConfig().getBoolean("dropHeartsPlayer") && !droppedAtKiller;
         pvpEvent.setShouldDropHearts(shouldDropFromPvP);
-
         pvpEvent.setKillerShouldGainHearts(!preventKillerGain);
 
         Bukkit.getPluginManager().callEvent(pvpEvent);
@@ -229,8 +224,7 @@ public final class PlayerDeathListener implements Listener {
     }
 
     private void handleNaturalDeath(PlayerDeathEvent event, Player player, PlayerData playerData, double healthToLoose) {
-        ZPlayerNaturalDeathEvent naturalEvent =
-                new ZPlayerNaturalDeathEvent(event, healthToLoose);
+        ZPlayerNaturalDeathEvent naturalEvent = new ZPlayerNaturalDeathEvent(event, healthToLoose);
         naturalEvent.setShouldDropHearts(plugin.getConfig().getBoolean("dropHeartsNatural"));
         Bukkit.getPluginManager().callEvent(naturalEvent);
 
@@ -255,8 +249,7 @@ public final class PlayerDeathListener implements Listener {
     }
 
     private void handleElimination(PlayerDeathEvent event, Player player, PlayerData playerData, Player killer, boolean isDeathByPlayer, double healthToLoose, boolean preventKillerGain, boolean droppedAtKiller) {
-        ZPlayerEliminationEvent eliminationEvent =
-                new ZPlayerEliminationEvent(event, killer);
+        ZPlayerEliminationEvent eliminationEvent = new ZPlayerEliminationEvent(event, killer);
         eliminationEvent.setShouldBanPlayer(!plugin.getConfig().getBoolean("disablePlayerBanOnElimination"));
         eliminationEvent.setShouldAnnounceElimination(plugin.getConfig().getBoolean("announceElimination"));
 
@@ -281,14 +274,21 @@ public final class PlayerDeathListener implements Listener {
         if (!eliminationEvent.isCancelled()) {
             // Execute elimination commands
             final List<String> elimCommands = plugin.getConfig().getStringList("eliminationCommands");
-            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+            
+            // [Folia Support] Executing global console commands must be done on the GlobalRegionScheduler
+            Runnable cmdAction = () -> {
                 for (String command : elimCommands) {
                     plugin.getServer().dispatchCommand(
                             plugin.getServer().getConsoleSender(),
                             command.replace("&player&", player.getName())
                     );
                 }
-            }, 1L);
+            };
+            if (LifeStealZ.isFolia()) {
+                Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> cmdAction.run(), 1L);
+            } else {
+                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, cmdAction, 1L);
+            }
 
             boolean heartRewardOnElimination = plugin.getConfig().getBoolean("heartRewardOnElimination", true);
             if (heartRewardOnElimination) {
@@ -328,11 +328,17 @@ public final class PlayerDeathListener implements Listener {
             }
 
             // Kick the player
-            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
+            // [Folia Support] Kicking a player modifies their connection/state, must be on EntityScheduler
+            Runnable kickAction = () -> {
                 if (player.isOnline()) { // Avoids trying to kick NPCs since they are not online
                     player.kick(eliminationEvent.getKickMessage());
                 }
-            }, 1L);
+            };
+            if (LifeStealZ.isFolia()) {
+                player.getScheduler().runDelayed(plugin, task -> kickAction.run(), null, 1L);
+            } else {
+                Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, kickAction, 1L);
+            }
 
             // Announce elimination
             if (eliminationEvent.isShouldAnnounceElimination()) {

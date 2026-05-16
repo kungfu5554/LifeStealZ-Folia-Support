@@ -8,8 +8,12 @@ import org.bukkit.boss.BossBar;
 import org.bukkit.entity.BlockDisplay;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
+/* Old code: 
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+*/
+// Folia Update: Use Folia's ScheduledTask for threaded regions
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.util.Transformation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
@@ -22,12 +26,21 @@ import java.util.Set;
 
 public final class ReviveBeaconEffectManager {
     private final LifeStealZ plugin;
+    /* Old code:
     private final Map<Location, BukkitTask> idleParticleBeacons;
     private final Map<Location, BukkitTask> revivingParticleBeacons;
     private final Map<Location, Set<BlockDisplay>> lasers;
     private final Map<Location, BukkitTask> laserGrowTasks;
     private final Map<Location, BlockDisplay> decoyDisplays;
     private final Map<Location, BukkitTask> bossbarTasks;
+    */
+    // Folia Update: Changed all BukkitTask references to ScheduledTask
+    private final Map<Location, ScheduledTask> idleParticleBeacons;
+    private final Map<Location, ScheduledTask> revivingParticleBeacons;
+    private final Map<Location, Set<BlockDisplay>> lasers;
+    private final Map<Location, ScheduledTask> laserGrowTasks;
+    private final Map<Location, BlockDisplay> decoyDisplays;
+    private final Map<Location, ScheduledTask> bossbarTasks;
     private final Map<Location, BossBar> bossBars;
 
     public ReviveBeaconEffectManager(LifeStealZ plugin) {
@@ -54,6 +67,7 @@ public final class ReviveBeaconEffectManager {
 
         if (!showEnchantParticles) return;
 
+        /* Old code:
         var runnable = new BukkitRunnable() {
             final Location center = location.clone().add(0.5, 1.0, 0.5);
 
@@ -63,6 +77,16 @@ public final class ReviveBeaconEffectManager {
         }.runTaskTimer(plugin, 0L, 10L);
 
         idleParticleBeacons.put(getKey(location), runnable);
+        */
+
+        // Folia Update: Replaced BukkitRunnable with RegionScheduler. 
+        // Note: Folia requires initial delay to be >= 1L for runAtFixedRate.
+        final Location center = location.clone().add(0.5, 1.0, 0.5);
+        ScheduledTask task = Bukkit.getRegionScheduler().runAtFixedRate(plugin, location, scheduledTask -> {
+            center.getWorld().spawnParticle(Particle.ENCHANT, center, 25, 0.6, 0.5, 0.6, 0.0);
+        }, 1L, 10L);
+
+        idleParticleBeacons.put(getKey(location), task);
     }
 
     /**
@@ -83,6 +107,7 @@ public final class ReviveBeaconEffectManager {
         location.getWorld().playSound(location, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
 
         if (showParticleRing) {
+            /* Old code:
             var runnable = new BukkitRunnable() {
                 final Location center = location.clone().add(0.5, 1.0, 0.5);
 
@@ -92,6 +117,15 @@ public final class ReviveBeaconEffectManager {
             }.runTaskTimer(plugin, 0L, 10L);
 
             revivingParticleBeacons.put(getKey(location), runnable);
+            */
+
+            // Folia Update: Replaced BukkitRunnable with RegionScheduler.
+            final Location center = location.clone().add(0.5, 1.0, 0.5);
+            ScheduledTask task = Bukkit.getRegionScheduler().runAtFixedRate(plugin, location, scheduledTask -> {
+                spawnRing(center, particleColor);
+            }, 1L, 10L);
+
+            revivingParticleBeacons.put(getKey(location), task);
         }
 
         if (plugin.getConfig().getBoolean("showBossbar")) startBossbarTask(location, target, reviveTime);
@@ -116,6 +150,7 @@ public final class ReviveBeaconEffectManager {
 
         bossBars.put(getKey(location), bossBar);
 
+        /* Old code:
         BukkitTask bossbarTask = new BukkitRunnable() {
             int timeleft = countdown;
 
@@ -146,19 +181,57 @@ public final class ReviveBeaconEffectManager {
                 bossBar.setProgress((double) timeleft / countdown);
 
                 String title = plugin.getLanguageManager().getString("reviveBossbarTitle")
-                        .replace("&target&", target)
-                        .replace("&remainingD&", String.valueOf(days))
-                        .replace("&remainingH&", hFormatted)
-                        .replace("&remainingM&", mFormatted)
-                        .replace("&remainingS&", sFormatted)
-                        .replace("&locationX&", String.valueOf(location.getBlockX()))
-                        .replace("&locationY&", String.valueOf(location.getBlockY()))
-                        .replace("&locationZ&", String.valueOf(location.getBlockZ()))
-                        .replace("&location&", location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
+                        ...
                 bossBar.setTitle(ChatColor.translateAlternateColorCodes('&', title));
                 timeleft--;
             }
         }.runTaskTimer(plugin, 0L, 20L);
+
+        bossbarTasks.put(getKey(location), bossbarTask);
+        */
+
+        // Folia Update: Replaced BukkitRunnable with GlobalRegionScheduler because it manages a bossbar for all online players globally.
+        // Used an array for timeleft to make it effectively final for the lambda.
+        int[] timeleft = { countdown };
+        ScheduledTask bossbarTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
+            if (timeleft[0] <= 0){
+                bossBar.setVisible(false);
+                bossBar.removeAll();
+                bossBars.remove(getKey(location));
+                task.cancel();
+                return;
+            }
+
+            int days = timeleft[0] / 86400;
+            int hours = (timeleft[0] % 86400) / 3600;
+            int minutes = (timeleft[0] & 3600) / 60; 
+            int seconds = timeleft[0] % 60;
+
+            String hFormatted = String.format("%02d", hours);
+            String mFormatted = String.format("%02d", minutes);
+            String sFormatted = String.format("%02d", seconds);
+
+            // Show bossbar to all players
+            // (This is in the Task because new players may join during this time)
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                bossBar.addPlayer(p);
+            }
+
+            bossBar.setProgress((double) timeleft[0] / countdown);
+
+            String title = plugin.getLanguageManager().getString("reviveBossbarTitle")
+                    .replace("&target&", target)
+                    .replace("&remainingD&", String.valueOf(days))
+                    .replace("&remainingH&", hFormatted)
+                    .replace("&remainingM&", mFormatted)
+                    .replace("&remainingS&", sFormatted)
+                    .replace("&locationX&", String.valueOf(location.getBlockX()))
+                    .replace("&locationY&", String.valueOf(location.getBlockY()))
+                    .replace("&locationZ&", String.valueOf(location.getBlockZ()))
+                    .replace("&location&", location.getBlockX() + ", " + location.getBlockY() + ", " + location.getBlockZ());
+            bossBar.setTitle(ChatColor.translateAlternateColorCodes('&', title));
+            timeleft[0]--;
+        }, 1L, 20L);
 
         bossbarTasks.put(getKey(location), bossbarTask);
     }
@@ -168,7 +241,11 @@ public final class ReviveBeaconEffectManager {
      * @param location The location of the Revive Beacon where the bossbar task will be stopped.
      */
     public void stopBossbarTask(Location location) {
+        /* Old code:
         BukkitTask task = bossbarTasks.remove(getKey(location));
+        */
+        // Folia Update: Changed variable type
+        ScheduledTask task = bossbarTasks.remove(getKey(location));
         if (task != null) task.cancel();
     }
 
@@ -220,6 +297,7 @@ public final class ReviveBeaconEffectManager {
                 new Quaternionf()
         ));
 
+        /* Old code:
         new BukkitRunnable() {
             float currentHeight = initialHeight;
 
@@ -243,6 +321,28 @@ public final class ReviveBeaconEffectManager {
                 ));
             }
         }.runTaskTimer(plugin, 0L, tickInterval);
+        */
+
+        // Folia Update: Used EntityScheduler to manipulate the specific block display entity.
+        float[] currentHeight = { initialHeight };
+        display.getScheduler().runAtFixedRate(plugin, task -> {
+            currentHeight[0] += growSpeed;
+
+            if (currentHeight[0] >= targetSize) {
+                currentHeight[0] = targetSize;
+                task.cancel();
+            }
+
+            // Adjust Y so it's always centered
+            float translationY = 0.5f - (currentHeight[0] / 2f);
+
+            display.setTransformation(new Transformation(
+                    new Vector3f((1 - width) / 2, translationY, (1 - width) / 2),
+                    new Quaternionf(),
+                    new Vector3f(width, currentHeight[0], width),
+                    new Quaternionf()
+            ));
+        }, () -> {}, 1L, tickInterval);
     }
 
     /**
@@ -305,6 +405,7 @@ public final class ReviveBeaconEffectManager {
         quartz.setTransformation(new Transformation(translation, noRotation, initialQuartzScale, noRotation));
         glass.setTransformation(new Transformation(translation, noRotation, initialGlassScale, noRotation));
 
+        /* Old code:
         BukkitTask lasergrowTask = new BukkitRunnable() {
             float currentHeight = 0.1f;
 
@@ -326,6 +427,26 @@ public final class ReviveBeaconEffectManager {
         }.runTaskTimer(plugin, 0L, 1L);
 
         laserGrowTasks.put(getKey(location), lasergrowTask);
+        */
+
+        // Folia Update: Replaced BukkitRunnable with RegionScheduler.
+        float[] currentHeight = { 0.1f };
+        ScheduledTask lasergrowTask = Bukkit.getRegionScheduler().runAtFixedRate(plugin, location, task -> {
+            currentHeight[0] += growSpeed;
+            if (currentHeight[0] >= finalHeight) {
+                currentHeight[0] = finalHeight;
+                task.cancel();
+            }
+
+            quartz.setTransformation(new Transformation(
+                    translation, noRotation, new Vector3f(width1, currentHeight[0], width1), noRotation
+            ));
+            glass.setTransformation(new Transformation(
+                    translation, noRotation, new Vector3f(width2, currentHeight[0], width2), noRotation
+            ));
+        }, 1L, 1L);
+
+        laserGrowTasks.put(getKey(location), lasergrowTask);
     }
 
     /**
@@ -333,7 +454,11 @@ public final class ReviveBeaconEffectManager {
      * @param location The location of the Revive Beacon where the particles will be stopped.
      */
     public void stopIdlePArticles(Location location) {
+        /* Old code:
         BukkitTask task = idleParticleBeacons.remove(getKey(location));
+        */
+        // Folia Update:
+        ScheduledTask task = idleParticleBeacons.remove(getKey(location));
         if (task != null) task.cancel();
     }
 
@@ -342,7 +467,11 @@ public final class ReviveBeaconEffectManager {
      * @param location The location of the Revive Beacon where the particles will be stopped.
      */
     public void stopRevivingParticles(Location location) {
+        /* Old code:
         BukkitTask task = revivingParticleBeacons.remove(getKey(location));
+        */
+        // Folia Update:
+        ScheduledTask task = revivingParticleBeacons.remove(getKey(location));
         if (task != null) task.cancel();
     }
 
@@ -354,7 +483,11 @@ public final class ReviveBeaconEffectManager {
     public void removeLaser(Location location) {
         Location key = getKey(location);
 
+        /* Old code:
         BukkitTask growTask = laserGrowTasks.remove(key);
+        */
+        // Folia Update:
+        ScheduledTask growTask = laserGrowTasks.remove(key);
         if (growTask != null) growTask.cancel();
 
         Set<BlockDisplay> displays = lasers.remove(key);
@@ -362,6 +495,7 @@ public final class ReviveBeaconEffectManager {
 
         final float collapseSpeed = 1f;
 
+        /* Old code:
         new BukkitRunnable() {
             float currentHeight = displays.stream()
                     .findFirst()
@@ -397,6 +531,43 @@ public final class ReviveBeaconEffectManager {
                 }
             }
         }.runTaskTimer(plugin, 0L, 1L);
+        */
+
+        // Folia Update: Replaced BukkitRunnable with RegionScheduler.
+        // Extracted variables outside of the lambda to be used effectively final.
+        float startHeight = displays.stream()
+                .findFirst()
+                .map(d -> d.getTransformation().getScale().y)
+                .orElse(150f);
+        float[] currentHeight = { startHeight };
+        final float initialHeight = startHeight;
+
+        Bukkit.getRegionScheduler().runAtFixedRate(plugin, location, task -> {
+            currentHeight[0] -= collapseSpeed;
+
+            if (currentHeight[0] <= 0f) {
+                for (BlockDisplay display : displays) {
+                    if (display != null) display.remove();
+                }
+                task.cancel();
+                return;
+            }
+
+            for (BlockDisplay display : displays) {
+                if (display == null) continue;
+
+                Vector3f originalScale = display.getTransformation().getScale();
+                float width = originalScale.x;
+                float yTranslation = (initialHeight - currentHeight[0]) / 2f;
+
+                display.setTransformation(new Transformation(
+                        new Vector3f(0f, yTranslation, 0f),
+                        new Quaternionf(),
+                        new Vector3f(width, currentHeight[0], width),
+                        new Quaternionf()
+                ));
+            }
+        }, 1L, 1L);
     }
 
     /**
@@ -427,21 +598,43 @@ public final class ReviveBeaconEffectManager {
      * This method is typically called when the plugin is disabled or when all Revive Beacons are removed.
      */
     public void clearAllEffects() {
+        /* Old code:
         for (BukkitTask task : idleParticleBeacons.values()) task.cancel();
+        */
+        // Folia Update: Changed type
+        for (ScheduledTask task : idleParticleBeacons.values()) task.cancel();
         idleParticleBeacons.clear();
+
+        /* Old code:
         for (BukkitTask task : revivingParticleBeacons.values()) task.cancel();
+        */
+        // Folia Update: Changed type
+        for (ScheduledTask task : revivingParticleBeacons.values()) task.cancel();
         revivingParticleBeacons.clear();
+
         for (Set<BlockDisplay> displays : lasers.values()) {
             if (displays == null) continue;
             for (var display : displays) if (display != null) display.remove();
         }
         lasers.clear();
+
+        /* Old code:
         for (BukkitTask task : laserGrowTasks.values()) task.cancel();
+        */
+        // Folia Update: Changed type
+        for (ScheduledTask task : laserGrowTasks.values()) task.cancel();
         laserGrowTasks.clear();
+
         for (BlockDisplay display : decoyDisplays.values()) if (display != null) display.remove();
         decoyDisplays.clear();
+
+        /* Old code:
         for (BukkitTask task : bossbarTasks.values()) task.cancel();
+        */
+        // Folia Update: Changed type
+        for (ScheduledTask task : bossbarTasks.values()) task.cancel();
         bossbarTasks.clear();
+
         for (BossBar bossBar : bossBars.values()) {
             if (bossBar != null) {
                 bossBar.setVisible(false);

@@ -246,15 +246,24 @@ public final class InteractionListener implements Listener {
 
         player.getInventory().setItemInOffHand(fakeTotem);
         // if you dont do a delay, it appears to use default texture
-        new BukkitRunnable() {
-            @Override
-            public void run() {
+        
+        // [Folia Support] Using player's EntityScheduler to run tasks safely on their thread
+        if (LifeStealZ.isFolia()) {
+            player.getScheduler().runDelayed(plugin, task -> {
                 // Play the totem animation
                 player.playEffect(EntityEffect.PROTECTED_FROM_DEATH);
                 player.getInventory().setItemInOffHand(originalOffHandItem);
-            }
-        }.runTaskLater(plugin, 3L);
-
+            }, null, 3L);
+        } else {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    // Play the totem animation
+                    player.playEffect(EntityEffect.PROTECTED_FROM_DEATH);
+                    player.getInventory().setItemInOffHand(originalOffHandItem);
+                }
+            }.runTaskLater(plugin, 3L);
+        }
     }
 
     private void updateItemInHand(Player player, ItemStack item, int slot) {

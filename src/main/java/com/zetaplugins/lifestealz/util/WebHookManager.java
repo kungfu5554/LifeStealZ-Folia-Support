@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
 
 public final class WebHookManager {
     private final LifeStealZ plugin;
@@ -27,41 +28,45 @@ public final class WebHookManager {
     }
 
     public void sendWebhookMessage(String title, String message, String colorHex) {
-        try {
-            URL url = new URL(getWebhookUrl());
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        // [Folia Support] Network requests (HTTP) will block the server thread causing lag spikes.
+        // Wrapping this in CompletableFuture to run it entirely async off the main thread.
+        CompletableFuture.runAsync(() -> {
+            try {
+                URL url = new URL(getWebhookUrl());
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
-            // Set up the HTTP connection properties
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-            connection.setDoOutput(true);
+                // Set up the HTTP connection properties
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                connection.setDoOutput(true);
 
-            int color = Integer.parseInt(colorHex, 16);
+                int color = Integer.parseInt(colorHex, 16);
 
-            // Create JSON payload for Discord Embed
-            String jsonPayload = "{"
-                    + "\"embeds\": [{"
-                    + "\"title\": \"" + title + "\","
-                    + "\"description\": \"" + message + "\","
-                    + "\"color\": " + color
-                    + "}]"
-                    + "}";
+                // Create JSON payload for Discord Embed
+                String jsonPayload = "{"
+                        + "\"embeds\": [{"
+                        + "\"title\": \"" + title + "\","
+                        + "\"description\": \"" + message + "\","
+                        + "\"color\": " + color
+                        + "}]"
+                        + "}";
 
-            // Send the JSON payload to the webhook
-            try (OutputStream os = connection.getOutputStream()) {
-                byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
-                os.write(input, 0, input.length);
+                // Send the JSON payload to the webhook
+                try (OutputStream os = connection.getOutputStream()) {
+                    byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
+                    os.write(input, 0, input.length);
+                }
+
+                // Check the response code from Discord
+                int responseCode = connection.getResponseCode();
+                if (responseCode != 204) plugin.getLogger().severe("Failed to send Discord webhook message. Response code: " + responseCode);
+
+                connection.disconnect();
+
+            } catch (Exception e) {
+                plugin.getLogger().severe("Error sending Discord webhook message: " + e.getMessage());
             }
-
-            // Check the response code from Discord
-            int responseCode = connection.getResponseCode();
-            if (responseCode != 204) plugin.getLogger().severe("Failed to send Discord webhook message. Response code: " + responseCode);
-
-            connection.disconnect();
-
-        } catch (Exception e) {
-            plugin.getLogger().severe("Error sending Discord webhook message: " + e.getMessage());
-        }
+        });
     }
 
     public void sendWebhookMessage(WebHookType type, String... placeholders) {

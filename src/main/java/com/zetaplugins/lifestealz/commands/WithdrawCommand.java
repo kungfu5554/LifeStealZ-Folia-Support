@@ -24,6 +24,10 @@ import java.util.List;
 public final class WithdrawCommand implements CommandExecutor, TabCompleter {
     private final LifeStealZ plugin;
 
+    // [Folia Support] Note for Devs: This command is natively Folia-safe because it exclusively modifies 
+    // the "sender's" inventory and kicks the "sender". Since commands are dispatched on the sender's 
+    // region thread, no cross-thread violations occur here.
+
     public WithdrawCommand(LifeStealZ plugin) {
         this.plugin = plugin;
     }
@@ -169,7 +173,6 @@ public final class WithdrawCommand implements CommandExecutor, TabCompleter {
 
             return false;
         }
-
 
         playerdata.setMaxHealth(playerdata.getMaxHealth() - (double) withdrawHearts * 2);
         plugin.getStorage().save(playerdata);

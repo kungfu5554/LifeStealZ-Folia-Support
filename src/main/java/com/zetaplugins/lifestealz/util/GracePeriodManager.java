@@ -1,6 +1,7 @@
 package com.zetaplugins.lifestealz.util;
 
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -66,6 +67,22 @@ public final class GracePeriodManager {
         return remaining < 0 ? Optional.empty() : Optional.of((int) (remaining));
     }
 
+    // [Folia Support] Helper method to safely dispatch console commands on the GlobalRegionScheduler
+    private void dispatchCommandsSafely(List<String> commands, String playerName) {
+        if (commands == null || commands.isEmpty()) return;
+        Runnable cmdAction = () -> {
+            for (String command : commands) {
+                plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
+                        command.replace("&player&", playerName));
+            }
+        };
+        if (LifeStealZ.isFolia()) {
+            Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> cmdAction.run(), 1L);
+        } else {
+            Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, cmdAction, 1L);
+        }
+    }
+
     /**
      * Sends the player a message and executes commands when the grace period starts.
      * @param player The player to start the grace period for.
@@ -73,20 +90,22 @@ public final class GracePeriodManager {
     public void startGracePeriod(Player player) {
         if (!isEnabled()) return;
 
-        for (String command : getConfig().getStartCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
-                    command.replace("&player&", player.getName()));
-        }
+        dispatchCommandsSafely(getConfig().getStartCommands(), player.getName());
 
         // Duration in ticks: 20 ticks = 1 second
         final long gracePeriodDuration = (long) getConfig().getDuration() * 20;
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                endGracePeriod(player);
-            }
-        }.runTaskLater(plugin, gracePeriodDuration);
+        // [Folia Support] Schedule the end of the grace period using the player's EntityScheduler.
+        if (LifeStealZ.isFolia()) {
+            player.getScheduler().runDelayed(plugin, task -> endGracePeriod(player), null, gracePeriodDuration);
+        } else {
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    endGracePeriod(player);
+                }
+            }.runTaskLater(plugin, gracePeriodDuration);
+        }
     }
 
     /**
@@ -109,10 +128,7 @@ public final class GracePeriodManager {
             player.playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, 500.0f, 1.0f);
         }
 
-        for (String command : getConfig().getEndCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
-                    command.replace("&player&", player.getName()));
-        }
+        dispatchCommandsSafely(getConfig().getEndCommands(), player.getName());
     }
 
     /**
@@ -127,13 +143,10 @@ public final class GracePeriodManager {
         PlayerData playerData = plugin.getStorage().load(player.getUniqueId());
         if (playerData == null) return false;
 
-        playerData.setFirstJoin(System.currentTimeMillis() - getConfig().getDuration() * 1000L);// Subtract the duration of the grace period
+        playerData.setFirstJoin(System.currentTimeMillis() - getConfig().getDuration() * 1000L); // Subtract the duration of the grace period
         plugin.getStorage().save(playerData);
 
-        for (String command : getConfig().getEndCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
-                    command.replace("&player&", player.getName()));
-        }
+        dispatchCommandsSafely(getConfig().getEndCommands(), player.getName());
 
         return true;
     }
@@ -152,10 +165,7 @@ public final class GracePeriodManager {
         playerData.setFirstJoin(System.currentTimeMillis());
         plugin.getStorage().save(playerData);
 
-        for (String command : getConfig().getStartCommands()) {
-            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(),
-                    command.replace("&player&", player.getName()));
-        }
+        dispatchCommandsSafely(getConfig().getStartCommands(), player.getName());
 
         return true;
     }

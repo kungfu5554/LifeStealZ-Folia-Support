@@ -10,13 +10,15 @@ import com.zetaplugins.lifestealz.LifeStealZ;
 import com.zetaplugins.lifestealz.commands.SubCommand;
 import com.zetaplugins.lifestealz.util.MessageUtils;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @AutoRegisterCommand(command = "lifestealz")
 public final class MainCommandHandler implements CommandExecutor {
     private final LifeStealZ plugin;
-    private final Map<String, SubCommand> commands = new HashMap<>();
+    // [Folia Support] Changed to ConcurrentHashMap for thread safety,
+    // ensuring no issues if commands are mapped or read concurrently.
+    private final Map<String, SubCommand> commands = new ConcurrentHashMap<>();
 
     public MainCommandHandler(LifeStealZ plugin) {
         this.plugin = plugin;

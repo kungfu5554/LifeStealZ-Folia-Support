@@ -2,13 +2,14 @@ package com.zetaplugins.lifestealz.addon;
 
 import com.zetaplugins.lifestealz.LifeStealZ;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class AddonManager {
     private final LifeStealZ plugin;
-    private final Map<String, LifeStealZAddon> registeredAddons = new HashMap<>();
+    // Use ConcurrentHashMap Multi-threaded (Folia)
+    private final Map<String, LifeStealZAddon> registeredAddons = new ConcurrentHashMap<>();
 
     public AddonManager(LifeStealZ plugin) {
         this.plugin = plugin;

@@ -87,7 +87,14 @@ public final class DevSubCommand implements SubCommand {
             PlayerData playerData = plugin.getStorage().load(player.getUniqueId());
             playerData.setFirstJoin(newFirstJoin);
             plugin.getStorage().save(playerData);
-            plugin.getGracePeriodManager().startGracePeriod(player);
+            
+            // [Folia Support] Modifying attributes (like triggering a Grace Period start) 
+            // of a specific entity requires execution on that entity's scheduler.
+            if (LifeStealZ.isFolia()) {
+                player.getScheduler().run(plugin, task -> plugin.getGracePeriodManager().startGracePeriod(player), null);
+            } else {
+                plugin.getGracePeriodManager().startGracePeriod(player);
+            }
         }
 
         if (optionTwo.equals("refreshCaches")) {

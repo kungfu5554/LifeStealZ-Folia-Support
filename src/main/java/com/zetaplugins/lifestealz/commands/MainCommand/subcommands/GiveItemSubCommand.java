@@ -74,23 +74,34 @@ public final class GiveItemSubCommand implements SubCommand {
             if (targetPlayer == null && targetPlayers.size() > 1) continue;
 
             assert targetPlayer != null;
-            ItemStack itemStack = CustomItemManager.createCustomItem(item, amount);
-            HashMap<Integer, ItemStack> leftover = targetPlayer.getInventory().addItem(itemStack);
 
-            // Check if there are any leftover items that couldn't fit in the inventory
-            if (!leftover.isEmpty()) {
-                for (ItemStack dropItem : leftover.values()) {
-                    targetPlayer.getWorld().dropItemNaturally(targetPlayer.getLocation(), dropItem);
+            // [Folia Support] Modifying another player's inventory or dropping items at their location
+            // must be done on their specific region thread.
+            Runnable giveAction = () -> {
+                ItemStack itemStack = CustomItemManager.createCustomItem(item, amount);
+                HashMap<Integer, ItemStack> leftover = targetPlayer.getInventory().addItem(itemStack);
+
+                // Check if there are any leftover items that couldn't fit in the inventory
+                if (!leftover.isEmpty()) {
+                    for (ItemStack dropItem : leftover.values()) {
+                        targetPlayer.getWorld().dropItemNaturally(targetPlayer.getLocation(), dropItem);
+                    }
                 }
-            }
 
-            if (!silent)
-                targetPlayer.sendMessage(MessageUtils.getAndFormatMsg(
-                        true,
-                        "giveItem", "&7You received &c%amount% &7%item%!",
-                        new MessageUtils.Replaceable("%amount%", amount + ""),
-                        new MessageUtils.Replaceable("%item%", CustomItemManager.getCustomItemData(item).getName())
-                ));
+                if (!silent)
+                    targetPlayer.sendMessage(MessageUtils.getAndFormatMsg(
+                            true,
+                            "giveItem", "&7You received &c%amount% &7%item%!",
+                            new MessageUtils.Replaceable("%amount%", amount + ""),
+                            new MessageUtils.Replaceable("%item%", CustomItemManager.getCustomItemData(item).getName())
+                    ));
+            };
+
+            if (LifeStealZ.isFolia()) {
+                targetPlayer.getScheduler().run(plugin, scheduledTask -> giveAction.run(), null);
+            } else {
+                giveAction.run();
+            }
         }
         return true;
     }

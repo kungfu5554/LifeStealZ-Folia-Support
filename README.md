@@ -1,9 +1,13 @@
-![LifeStealZ Banner](https://file.strassburger.dev/LifeStealZ_banner_new_2.png)
+![LifeStealZ Banner](https://wsrv.nl/?url=https%3A%2F%2Ffile.strassburger.dev%2FLifeStealZ_banner_new_2.png&n=-1)
 
 ---
 
-![paper](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/supported/paper_vector.svg)
-![purpur](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/supported/purpur_vector.svg)
+### 🖥️ Platform Compatibility
+![Paper](https://img.shields.io/badge/Paper-Supported-2C2C2C?labelColor=E8E8E8&style=for-the-badge)
+![Purpur](https://img.shields.io/badge/Purpur-Supported-2C2C2C?labelColor=E0B0FF&style=for-the-badge)
+![Folia](https://img.shields.io/badge/Folia-Supported-2C2C2C?labelColor=201C2B&style=for-the-badge)
+
+### 🔗 Links & Documentation
 [![github](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/available/github_vector.svg)](https://github.com/KartoffelChipss/lifestealz)
 [![modrinth](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/available/modrinth_vector.svg)](https://modrinth.com/plugin/lifestealz)
 [![hangar](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/available/hangar_vector.svg)](https://hangar.papermc.io/KartoffelChipss/LifestealZ)
@@ -16,10 +20,22 @@ LifeStealZ is a lifesteal SMP plugin, that allows you to steal hearts from other
 
 LifeStealZ offers a great amount of admin tools and is highly customizable. You can change every message and change everything about the custom items.
 
-<br>
+---
+
+### 🍴 Fork Information & Credits
+This project is a **fork** of the original [LifeStealZ](https://github.com/ZetaPlugins/LifeStealZ) developed by **ZetaPlugins**. 
+
+Special thanks to the original authors for their incredible work. This fork focuses on enhancing performance and providing full compatibility for modern server environments.
 
 ---
 
+### ⚡ Folia Support
+This plugin fully supports **Folia**'s multi-threaded region architecture. All traditional Bukkit Schedulers have been safely migrated to context-aware regional schedulers:
+* **Region Scheduler:** Handles block updates, localized particle rings, and beacon laser growth tasks.
+* **Global Region Scheduler:** Manages global bossbars and repetitive item animations inside custom inventory GUIs.
+* **Entity Scheduler:** Animates block display scaling tasks tied directly to specific entities.
+
+---
 ![FeaturesBanner](https://strassburger.org/img/lifestealz/banner_features.png)
 
 **Main Features**
@@ -81,7 +97,7 @@ LifeStealZ offers a great amount of admin tools and is highly customizable. You 
 
 ![ConfigBanner](https://strassburger.org/img/lifestealz/banner_config.png)
 
-The conifuration is split into multiple files located at `plugins/LifeStealZ/`:
+The configuration is split into multiple files located at `plugins/LifeStealZ/`:
 
 <details>
 <summary>config.yml</summary>
@@ -467,8 +483,6 @@ revive:
 ```
 </details>
 
-If you want a slot in the crafting recipe to be blank, replace the block name with `AIR`.
-
 ### WorldGuard Flags
 
 To set a custom worldguard flag, you have to use `/rg flags` and scroll to the last page.
@@ -502,5 +516,3 @@ If you need help with the setup of the plugin, or found a bug, you can join my d
 [![discord-plural](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/compact/social/discord-plural_vector.svg)](https://strassburger.org/discord)
 
 ---
-
-[![Usage](https://bstats.org/signatures/bukkit/LifeStealZ.svg)](https://bstats.org/plugin/bukkit/LifeStealZ/18735)

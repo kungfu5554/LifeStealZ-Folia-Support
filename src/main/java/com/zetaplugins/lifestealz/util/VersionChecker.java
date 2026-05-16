@@ -16,13 +16,16 @@ import java.util.logging.Logger;
 
 /**
  * VersionChecker is a utility class that checks for updates of the LifeStealZ plugin
- * by querying the Modrinth API for the latest version compatible with the current Minecraft version.
+ * by querying the GitHub API for the latest release version.
  */
 public final class VersionChecker {
     private final LifeStealZ plugin;
     private final Logger logger;
-    private final String modrinthProjectId;
+    private final String modrinthProjectId; // Kept for backwards compatibility with main class
     private boolean newVersionAvailable = false;
+
+    // The GitHub repository to check for updates
+    private final String githubRepo = "kungfu5554/LifeStealZ-Folia-Support";
 
     public VersionChecker(LifeStealZ plugin, String modrinthProjectId) {
         this.plugin = plugin;
@@ -31,12 +34,12 @@ public final class VersionChecker {
         checkForUpdates();
     }
 
-    private String getModrinthProjectUrl() {
-        return "https://api.modrinth.com/v2/project/" + modrinthProjectId;
+    private String getGithubApiUrl() {
+        return "https://api.github.com/repos/" + githubRepo + "/releases/latest";
     }
 
     /**
-     * Checks for updates of the LifeStealZ plugin by comparing the current version with the latest version available on Modrinth.
+     * Checks for updates of the LifeStealZ plugin by comparing the current version with the latest version available on GitHub.
      * If a new version is available, it logs a message to the console with the details.
      */
     private void checkForUpdates() {
@@ -56,7 +59,7 @@ public final class VersionChecker {
                         darkGray + "==========================================" + reset + "\n" +
                         bold + "A new version of LifeStealZ is available!" + reset + "\n" +
                         bold + "New Version: " + reset + bold + red + latestVersion + reset + lightGray + " (Your version: " + currentVersion + ")" + reset + "\n" +
-                        bold + "Download here: " + reset + lightGray + reset + "https://modrinth.com/plugin/lifestealz/version/" + latestVersion + "\n" +
+                        bold + "Download here: " + reset + lightGray + reset + "https://github.com/" + githubRepo + "/releases/latest" + "\n" +
                         darkGray + "==========================================" + reset;
 
                 logger.info(message);
@@ -65,26 +68,24 @@ public final class VersionChecker {
     }
 
     /**
-     * Fetches the latest version of the plugin from Modrinth.
+     * Fetches the latest version of the plugin from GitHub.
      *
      * @return The latest version number as a String, or null if it could not be fetched.
      */
     private String fetchLatestVersion() {
-        String mcVersion = plugin.getServer().getMinecraftVersion();
-        String encodedGameVersion = URLEncoder.encode("[\"" + mcVersion + "\"]", StandardCharsets.UTF_8);
-        String versionsUrl = getModrinthProjectUrl() + "/version?game_versions=" + encodedGameVersion;
+        String versionsUrl = getGithubApiUrl();
+        JSONObject latestRelease = fetchJsonFromUrl(versionsUrl);
+        
+        if (latestRelease == null) return null;
 
-        JSONArray versionsArray = fetchJsonArrayFromUrl(versionsUrl);
-        if (versionsArray == null || versionsArray.isEmpty()) return null;
-
-        JSONObject latestVersion = (JSONObject) versionsArray.get(0);
-        return (String) latestVersion.get("version_number");
-    }
-
-    private String fetchVersionNumber(String versionId) {
-        String versionUrl = getModrinthProjectUrl() + "/version/" + versionId;
-        JSONObject versionJson = fetchJsonFromUrl(versionUrl);
-        return versionJson != null ? (String) versionJson.get("version_number") : null;
+        String tagName = (String) latestRelease.get("tag_name");
+        
+        // Remove 'v' prefix if it exists (e.g., 'v1.0.0' -> '1.0.0')
+        if (tagName != null && tagName.toLowerCase().startsWith("v")) {
+            tagName = tagName.substring(1);
+        }
+        
+        return tagName;
     }
 
     /**
@@ -137,6 +138,8 @@ public final class VersionChecker {
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("GET");
+        // Add User-Agent since GitHub API requires it
+        connection.setRequestProperty("User-Agent", "LifeStealZ-Updater");
         return connection;
     }
 

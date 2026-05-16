@@ -5,7 +5,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 public abstract class LifeStealZAddon {
     private final AddonMetadata metadata;
     private final JavaPlugin mainPlugin;
-    private boolean enabled = false;
+    // Use volatile for Thread
+    private volatile boolean enabled = false;
 
     public LifeStealZAddon(AddonMetadata metadata, JavaPlugin mainPlugin) {
         this.metadata = metadata;

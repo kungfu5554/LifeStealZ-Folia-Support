@@ -49,7 +49,25 @@ public final class ReviveBeaconBreakListener implements Listener {
                 return;
             }
 
-            if (!reviveTask.task().isCancelled()) reviveTask.task().cancel();
+            // [Folia Support] Safe cancellation checking for Folia's ScheduledTask or standard BukkitTask
+            Object taskObj = reviveTask.task();
+            if (taskObj != null) {
+                if (LifeStealZ.isFolia()) {
+                    try {
+                        io.papermc.paper.threadedregions.scheduler.ScheduledTask foliaTask = 
+                            (io.papermc.paper.threadedregions.scheduler.ScheduledTask) taskObj;
+                        if (!foliaTask.isCancelled()) foliaTask.cancel();
+                    } catch (NoClassDefFoundError | ClassCastException ignored) {
+                        // Ignored fallback
+                    }
+                } else {
+                    if (taskObj instanceof org.bukkit.scheduler.BukkitTask) {
+                        org.bukkit.scheduler.BukkitTask bukkitTask = (org.bukkit.scheduler.BukkitTask) taskObj;
+                        if (!bukkitTask.isCancelled()) bukkitTask.cancel();
+                    }
+                }
+            }
+
             plugin.getReviveTaskManager().removeReviveTask(location);
             location.getWorld().playSound(location, Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 1.0f);
             Player reviver = Bukkit.getPlayer(reviveTask.reviver());

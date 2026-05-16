@@ -1,7 +1,11 @@
 package com.zetaplugins.lifestealz.util.revive;
 
 import org.bukkit.Location;
+/* Old code:
 import org.bukkit.scheduler.BukkitTask;
+*/
+// Folia Update: Use Folia's ScheduledTask instead of BukkitTask
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 
 import java.util.UUID;
 
@@ -15,4 +19,8 @@ import java.util.UUID;
  * @param start           The timestamp when the revive process started (unix epoch in seconds).
  * @param durationSeconds The duration of the revive process in seconds.
  */
+/* Old code:
 public record ReviveTask(Location location, BukkitTask task, UUID reviver, UUID target, long start, int durationSeconds) {}
+*/
+// Folia Update: Replaced BukkitTask with ScheduledTask for Folia compatibility
+public record ReviveTask(Location location, ScheduledTask task, UUID reviver, UUID target, long start, int durationSeconds) {}

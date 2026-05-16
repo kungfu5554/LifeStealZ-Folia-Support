@@ -32,6 +32,9 @@ public final class LifeStealZ extends ZetaCorePlugin {
     private static final String FASTSTATS_TOKEN = "8fb586fadff0ff4cb078cb25d69ab734";
     public static final ErrorTracker FASTSTATS_ERROR_TRACKER = ErrorTracker.contextAware();
 
+    // ตัวแปรสำหรับเช็คสถานะ Folia
+    private static boolean isFolia = false;
+
     private VersionChecker versionChecker;
     private Storage storage;
     private WorldGuardManager worldGuardManager;
@@ -59,12 +62,21 @@ public final class LifeStealZ extends ZetaCorePlugin {
 
     @Override
     public void onLoad() {
+        // chack is Folia server?
+        try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            isFolia = true;
+            getLogger().info("Folia server detected! Enabling Region-based multithreading support.");
+        } catch (ClassNotFoundException e) {
+            isFolia = false;
+        }
+
         getLogger().info("Loading LifeStealZ...");
 
         if (Bukkit.getName().toLowerCase().contains("spigot") || Bukkit.getName().toLowerCase().contains("craftbukkit")) {
             getLogger().severe("---------------------------------------------------");
             getLogger().severe("LifeStealZ does not support Spigot or Bukkit!");
-            getLogger().severe("Please use Paper or any fork of Paper (like Purpur). If you need further assistance, please join our Discord server:");
+            getLogger().severe("Please use Paper, Purpur, or Folia. If you need further assistance, please join our Discord server:");
             getLogger().severe("https://strassburger.org/discord");
             getLogger().severe("---------------------------------------------------");
         }
@@ -145,6 +157,11 @@ public final class LifeStealZ extends ZetaCorePlugin {
 
     public static LifeStealZAPI getAPI() {
         return new LifeStealZAPIImpl(getInstance());
+    }
+
+    // Method is Folia
+    public static boolean isFolia() {
+        return isFolia;
     }
 
     public AsyncTaskManager getAsyncTaskManager() {

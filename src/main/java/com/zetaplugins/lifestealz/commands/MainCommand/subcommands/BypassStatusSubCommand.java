@@ -37,6 +37,8 @@ public final class BypassStatusSubCommand implements SubCommand {
             return false;
         }
 
+        // [Folia Support] This operation only reads data and sends a message to the sender.
+        // It does not modify live entities, so it is inherently thread-safe on Folia.
         OfflinePlayer targetPlayer = targetPlayers.get(0);
         boolean hasBypass = plugin.getBypassManager().hasBypass(targetPlayer.getPlayer());
         
