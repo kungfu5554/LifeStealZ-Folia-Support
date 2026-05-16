@@ -32,7 +32,7 @@ public final class LifeStealZ extends ZetaCorePlugin {
     private static final String FASTSTATS_TOKEN = "8fb586fadff0ff4cb078cb25d69ab734";
     public static final ErrorTracker FASTSTATS_ERROR_TRACKER = ErrorTracker.contextAware();
 
-    // ตัวแปรสำหรับเช็คสถานะ Folia
+    // Chanking server is Folia
     private static boolean isFolia = false;
 
     private VersionChecker versionChecker;
